@@ -75,7 +75,7 @@ Output samples (by tier priority):
 | **Leet Speak (3 levels)** | Soft (single letter), Full (all letters), Deep (alternative sets) | `john` → `j0hn`, `j0hN` |
 | **Mutations** | Truncation, reverse, vowel removal, repetition | `john` → `joh`, `nhoj`, `jhn`, `johnjohn` |
 | **Initials Extraction** | Automatic multi-word initials | `john doe` → `jd`, `JD`, `Jd` |
-| **Normalization** | Accented char normalization (e.g. ç→c, ş→s, é→e) | `şifre` → `sifre` |
+| **Normalization** | International diacritic normalization (e.g. é→e, ñ→n, ü→u, ç→c, ş→s) | `café` → `cafe`, `müller` → `muller` |
 | **Date Permutation** | Smart expansion of year/date formats | `1995` → `95`, `9595`, `5991` |
 
 ### 🕵️ OSINT & Intelligence Modules
@@ -228,10 +228,10 @@ python elc_gen.py -i target.txt -o wordlist.txt --config /path/to/custom.cfg
 | `[leet]` | All leet speak conversion rules (`a = @,4`) |
 | `[symbols]` | Primary, secondary, and extra symbol lists |
 | `[numbers]` | Trailing numbers, sequential, repeating, keyboard walks, complexity tails |
-| `[cultural]` | Important years, region plate codes |
-| `[affixes]` | Prefix / Suffix words (admin, pro, vip...) |
-| `[passwords]` | Common passwords + **your custom passwords** |
-| `[turkish]` | Character normalization table |
+| `[regional]` / `[cultural]` | Important milestone years, region codes |
+| `[affixes]` | Prefix / Suffix words (admin, root, pro, vip...) |
+| `[passwords]` | Global common passwords + **your custom passwords** |
+| `[diacritics]` / `[normalization]` | International character normalization table |
 | `[osint]` | Web crawler settings (timeout, user-agent, max words) |
 | `[output]` | Default filename, format, hash algorithm |
 

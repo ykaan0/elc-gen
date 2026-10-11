@@ -202,19 +202,24 @@ def load_config(cfg_path: str = None) -> configparser.ConfigParser:
 
 
 def _apply_config(config: configparser.ConfigParser):
-    global TR_TO_EN, LEET_RULES
+    global TR_TO_EN, DIACRITICS_TO_ASCII, LEET_RULES
     global TOP_TRAILING_NUMBERS, KEYBOARD_WALKS, REPEATING_DIGITS, SEQUENTIAL_NUMBERS
     global TOP_PLATES, ALL_PLATES, IMPORTANT_YEARS
     global TOP_AFFIXES, ALL_AFFIXES
     global PRIMARY_SYMBOLS, SECONDARY_SYMBOLS, ALL_SYMBOLS
-    global COMPLEXITY_TAILS, COMMON_TURKISH_PASSWORDS
+    global COMPLEXITY_TAILS, COMMON_TURKISH_PASSWORDS, COMMON_PASSWORDS
 
-    if config.has_section("turkish"):
-        TR_TO_EN = {}
+    DIACRITICS_TO_ASCII = _DEFAULT_DIACRITICS_TO_ASCII.copy()
+    if config.has_section("diacritics"):
+        for key, val in config.items("diacritics"):
+            DIACRITICS_TO_ASCII[key.strip()] = val.strip()
+    elif config.has_section("normalization"):
+        for key, val in config.items("normalization"):
+            DIACRITICS_TO_ASCII[key.strip()] = val.strip()
+    elif config.has_section("turkish"):
         for key, val in config.items("turkish"):
-            TR_TO_EN[key.strip()] = val.strip()
-    else:
-        TR_TO_EN = _DEFAULT_TR_TO_EN.copy()
+            DIACRITICS_TO_ASCII[key.strip()] = val.strip()
+    TR_TO_EN = DIACRITICS_TO_ASCII
 
     if config.has_section("leet"):
         LEET_RULES = {}
@@ -246,15 +251,20 @@ def _apply_config(config: configparser.ConfigParser):
         KEYBOARD_WALKS = _DEFAULT_KEYBOARD_WALKS[:]
         COMPLEXITY_TAILS = _DEFAULT_COMPLEXITY_TAILS[:]
 
-    if config.has_section("cultural"):
+    if config.has_section("regional"):
+        IMPORTANT_YEARS = _csv(config.get("regional", "important_years", fallback=""))
+        TOP_PLATES = _csv(config.get("regional", "top_region_codes", fallback=""))
+        gen_all = config.get("regional", "generate_all_two_digits", fallback="true").strip().lower()
+        ALL_PLATES = [f"{i:02d}" for i in range(0, 100)] if gen_all == "true" else TOP_PLATES[:]
+    elif config.has_section("cultural"):
         IMPORTANT_YEARS = _csv(config.get("cultural", "important_years", fallback=""))
         TOP_PLATES = _csv(config.get("cultural", "top_plates", fallback=""))
         gen_all = config.get("cultural", "generate_all_plates", fallback="true").strip().lower()
-        ALL_PLATES = [f"{i:02d}" for i in range(1, 82)] if gen_all == "true" else TOP_PLATES[:]
+        ALL_PLATES = [f"{i:02d}" for i in range(0, 100)] if gen_all == "true" else TOP_PLATES[:]
     else:
         IMPORTANT_YEARS = _DEFAULT_IMPORTANT_YEARS[:]
         TOP_PLATES = _DEFAULT_TOP_PLATES[:]
-        ALL_PLATES = [f"{i:02d}" for i in range(1, 82)]
+        ALL_PLATES = [f"{i:02d}" for i in range(0, 100)]
 
     if config.has_section("affixes"):
         TOP_AFFIXES = _csv(config.get("affixes", "top", fallback=""))
@@ -264,12 +274,19 @@ def _apply_config(config: configparser.ConfigParser):
         ALL_AFFIXES = _DEFAULT_ALL_AFFIXES[:]
 
     if config.has_section("passwords"):
-        COMMON_TURKISH_PASSWORDS = _csv(config.get("passwords", "common_turkish", fallback=""))
+        common = _csv(config.get("passwords", "common_passwords", fallback=""))
+        if not common:
+            common = _csv(config.get("passwords", "common_turkish", fallback=""))
+        if not common:
+            common = _DEFAULT_COMMON_PASSWORDS[:]
         custom = _csv(config.get("passwords", "custom_passwords", fallback=""))
         if custom:
-            COMMON_TURKISH_PASSWORDS.extend(custom)
+            common.extend(custom)
+        COMMON_PASSWORDS = common
+        COMMON_TURKISH_PASSWORDS = common
     else:
-        COMMON_TURKISH_PASSWORDS = _DEFAULT_COMMON_TURKISH_PASSWORDS[:]
+        COMMON_PASSWORDS = _DEFAULT_COMMON_PASSWORDS[:]
+        COMMON_TURKISH_PASSWORDS = COMMON_PASSWORDS[:]
 
 
 def get_config_value(section: str, key: str, fallback=None):
@@ -287,21 +304,48 @@ def get_config_int(section: str, key: str, fallback: int = 0) -> int:
     return fallback
 
 
-_DEFAULT_TR_TO_EN = {
+_DEFAULT_DIACRITICS_TO_ASCII = {
     'ç': 'c', 'Ç': 'C',
     'ğ': 'g', 'Ğ': 'G',
     'ı': 'i', 'I': 'I',
     'İ': 'I', 'i': 'i',
     'ö': 'o', 'Ö': 'O',
     'ş': 's', 'Ş': 'S',
-    'ü': 'u', 'Ü': 'U'
+    'ü': 'u', 'Ü': 'U',
+    'é': 'e', 'É': 'E',
+    'è': 'e', 'È': 'E',
+    'ê': 'e', 'Ê': 'E',
+    'ë': 'e', 'Ë': 'E',
+    'à': 'a', 'À': 'A',
+    'á': 'a', 'Á': 'A',
+    'â': 'a', 'Â': 'A',
+    'ä': 'a', 'Ä': 'A',
+    'ã': 'a', 'Ã': 'A',
+    'å': 'a', 'Å': 'A',
+    'í': 'i', 'Í': 'I',
+    'ì': 'i', 'Ì': 'I',
+    'î': 'i', 'Î': 'I',
+    'ï': 'i', 'Ï': 'I',
+    'ó': 'o', 'Ó': 'O',
+    'ò': 'o', 'Ò': 'O',
+    'ô': 'o', 'Ô': 'O',
+    'õ': 'o', 'Õ': 'O',
+    'ú': 'u', 'Ú': 'U',
+    'ù': 'u', 'Ù': 'U',
+    'û': 'u', 'Û': 'U',
+    'ñ': 'n', 'Ñ': 'N',
+    'ß': 'ss',
+    'æ': 'ae', 'Æ': 'AE',
+    'ø': 'o', 'Ø': 'O',
 }
+_DEFAULT_TR_TO_EN = _DEFAULT_DIACRITICS_TO_ASCII.copy()
 
 _DEFAULT_TOP_TRAILING_NUMBERS = [
-    '1', '2', '3', '7', '11', '12', '13', '21', '22', '23', '07',
-    '01', '02', '06', '10', '34', '35', '42', '55', '61', '99',
-    '123', '321', '007', '000', '111', '222', '333', '666', '777', '786', '143',
-    '1234', '4321', '1111', '2222', '0000', '1903', '1905', '1907', '1923', '1453',
+    '1', '2', '3', '4', '7', '8', '9', '11', '12', '13', '21', '22', '23',
+    '01', '02', '07', '10', '69', '77', '88', '99',
+    '123', '321', '007', '000', '111', '222', '333', '444', '666', '777', '888', '999', '786', '143',
+    '1234', '4321', '1111', '2222', '0000',
+    '2020', '2021', '2022', '2023', '2024', '2025', '2026',
     '12345', '54321', '11111',
     '123456', '654321', '123321',
 ]
@@ -319,7 +363,7 @@ _DEFAULT_REPEATING_DIGITS = [
     '00', '11', '22', '33', '44', '55', '66', '77', '88', '99',
     '000', '111', '222', '333', '444', '555', '666', '777', '888', '999',
     '0000', '1111', '2222', '3333', '7777', '1212', '1221', '2121',
-    '1010', '2020', '2525', '3131', '6969', '1313', '6161',
+    '1010', '2020', '2525', '6969', '1313',
     '123123', '321321', '112233', '223344', '998877',
 ]
 
@@ -329,22 +373,24 @@ _DEFAULT_SEQUENTIAL_NUMBERS = [
     '0123', '01234', '012345',
 ]
 
-_DEFAULT_TOP_PLATES = ['34', '06', '35', '01', '07', '16', '55', '42', '61', '41']
+_DEFAULT_TOP_REGION_CODES = ['01', '02', '07', '10', '11', '12', '20', '21', '69', '99']
+_DEFAULT_TOP_PLATES = _DEFAULT_TOP_REGION_CODES
+
 _DEFAULT_IMPORTANT_YEARS = [
-    '1903', '1905', '1907', '1967',
-    '1923', '1919', '1881', '1453',
-    '2023', '2024', '2025', '2026',
+    '1990', '1995', '1998', '1999',
+    '2000', '2001', '2010', '2015',
+    '2020', '2021', '2022', '2023', '2024', '2025', '2026',
 ]
 
-_DEFAULT_TOP_AFFIXES = ['tr', 'admin', 'pass', 'pro', 'vip', 'ist', 'dev', 'app', 'online', 'official']
+_DEFAULT_TOP_AFFIXES = ['admin', 'user', 'pass', 'root', 'pro', 'vip', 'dev', 'app', 'online', 'official', 'corp', 'test']
 _DEFAULT_ALL_AFFIXES = [
-    'admin', 'pass', 'password', 'sifre', 'parola', 'root', 'user', 'master', 'super',
-    'login', 'giris', 'hesap', 'account',
-    'pro', 'vip', 'king', 'queen', 'boss', 'chief', 'star', 'legend', 'hero', 'alfa',
-    'tr', 'turk', 'turkey', 'ist', 'istanbul', 'ankara', 'izmir',
-    'dev', 'app', 'test', 'web', 'mail', 'net', 'sys', 'tech', 'corp', 'digital',
-    'love', 'ask', 'canim', 'bebek', 'hayat', 'forever', 'only', 'my',
-    'online', 'official', 'team', 'club', 'fan', 'real', 'the', 'new',
+    'admin', 'pass', 'password', 'root', 'user', 'guest', 'master', 'super',
+    'login', 'signin', 'account', 'portal', 'access',
+    'pro', 'vip', 'king', 'queen', 'boss', 'chief', 'star', 'legend', 'hero', 'alpha',
+    'dev', 'app', 'test', 'prod', 'stage', 'web', 'mail', 'net', 'sys', 'tech', 'corp', 'digital',
+    'it', 'cloud', 'host', 'data', 'server', 'security', 'info', 'help', 'desk', 'office', 'home',
+    'love', 'forever', 'only', 'my',
+    'online', 'official', 'team', 'club', 'fan', 'group', 'real', 'the', 'new', 'best', 'top',
 ]
 
 _DEFAULT_PRIMARY_SYMBOLS = ['!', '.', '_', '-', '@', '*']
@@ -354,16 +400,17 @@ _DEFAULT_COMPLEXITY_TAILS = [
     '!', '.', '*', '#', '!!', '!@', '!1', '@1', '#1', '$1',
     '!@#', '!23', '!2#', '123!', '1!', '!a', '!A',
     '1!', '1@', '1#', '12!', '123!', '1234!',
-    '.com', '.tr', '.net',
+    '.com', '.net', '.org', '.io',
 ]
 
-_DEFAULT_COMMON_TURKISH_PASSWORDS = [
-    'sifre', 'parola', 'turkiye', 'istanbul', 'ankara', 'fenerbahce', 'galatasaray',
-    'besiktas', 'trabzonspor', 'iloveyou', 'sevgilim', 'askim', 'canim',
-    'melek', 'allah', 'bismillah', 'insallah', 'masallah',
-    'herkull', 'kartal', 'aslan', 'bozkurt', 'ataturk', 'mustafakemal',
-    'hayat', 'gunes', 'yildiz', 'deniz', 'merhaba', 'selam', 'tamam',
+_DEFAULT_COMMON_PASSWORDS = [
+    'password', '123456', '12345678', '123456789', 'qwerty', 'welcome', 'admin',
+    'iloveyou', 'master', 'monkey', 'dragon', 'sunshine', 'princess', 'letmein',
+    'trustno1', 'shadow', 'football', 'baseball', 'superman', 'warrior', 'killer',
+    'chelsea', 'arsenal', 'liverpool', 'batman', 'starwars', 'pokemon', 'ninja',
+    'family', 'secret', 'freedom', 'summer', 'winter',
 ]
+_DEFAULT_COMMON_TURKISH_PASSWORDS = _DEFAULT_COMMON_PASSWORDS
 
 _DEFAULT_LEET_RULES = {
     'a': ['@', '4'],
@@ -384,13 +431,14 @@ _DEFAULT_LEET_RULES = {
     'ç': ['('],
 }
 
-TR_TO_EN = _DEFAULT_TR_TO_EN.copy()
+DIACRITICS_TO_ASCII = _DEFAULT_DIACRITICS_TO_ASCII.copy()
+TR_TO_EN = DIACRITICS_TO_ASCII
 TOP_TRAILING_NUMBERS = _DEFAULT_TOP_TRAILING_NUMBERS[:]
 KEYBOARD_WALKS = _DEFAULT_KEYBOARD_WALKS[:]
 REPEATING_DIGITS = _DEFAULT_REPEATING_DIGITS[:]
 SEQUENTIAL_NUMBERS = _DEFAULT_SEQUENTIAL_NUMBERS[:]
 TOP_PLATES = _DEFAULT_TOP_PLATES[:]
-ALL_PLATES = [f"{i:02d}" for i in range(1, 82)]
+ALL_PLATES = [f"{i:02d}" for i in range(0, 100)]
 IMPORTANT_YEARS = _DEFAULT_IMPORTANT_YEARS[:]
 TOP_AFFIXES = _DEFAULT_TOP_AFFIXES[:]
 ALL_AFFIXES = _DEFAULT_ALL_AFFIXES[:]
@@ -398,12 +446,17 @@ PRIMARY_SYMBOLS = _DEFAULT_PRIMARY_SYMBOLS[:]
 SECONDARY_SYMBOLS = _DEFAULT_SECONDARY_SYMBOLS[:]
 ALL_SYMBOLS = PRIMARY_SYMBOLS + SECONDARY_SYMBOLS + ['/', '=', '~']
 COMPLEXITY_TAILS = _DEFAULT_COMPLEXITY_TAILS[:]
-COMMON_TURKISH_PASSWORDS = _DEFAULT_COMMON_TURKISH_PASSWORDS[:]
+COMMON_PASSWORDS = _DEFAULT_COMMON_PASSWORDS[:]
+COMMON_TURKISH_PASSWORDS = COMMON_PASSWORDS[:]
 LEET_RULES = {k: list(v) for k, v in _DEFAULT_LEET_RULES.items()}
 
 
-def normalize_turkish(word: str) -> str:
-    return "".join(TR_TO_EN.get(ch, ch) for ch in word)
+def normalize_text(word: str) -> str:
+    """Normalize accented characters and diacritics into ASCII equivalents."""
+    return "".join(DIACRITICS_TO_ASCII.get(ch, ch) for ch in word)
+
+
+normalize_turkish = normalize_text
 
 
 def get_casing_variations(word: str) -> Dict[str, Set[str]]:
@@ -477,7 +530,7 @@ def get_word_mutations(word: str) -> Dict[str, Set[str]]:
         mutations["extended"].add(w[-3:])
         mutations["extended"].add(w[-4:])
 
-    consonants = "".join(c for c in w if c not in 'aeıioöuü')
+    consonants = "".join(c for c in w if c not in 'aeiouyàáâäæãåāèéêëēėęîïíīįìôöòóœøōõûüùúūıöü')
     if len(consonants) >= 2 and consonants != w:
         mutations["extended"].add(consonants)
 
@@ -575,7 +628,7 @@ def crawl_website_keywords(url: str, min_word_len: int = None, max_words: int = 
             parser.feed(html)
             raw_text = " ".join(parser.text_parts)
 
-            words = re.findall(r'\b[A-Za-zçÇğĞıİöÖşŞüÜ]{%d,}\b' % min_word_len, raw_text)
+            words = re.findall(r'\b[A-Za-z\u00C0-\u017F]{%d,}\b' % min_word_len, raw_text)
             unique_words = list(dict.fromkeys([w.lower() for w in words]))[:max_words]
             print(f"{Colors.GREEN}[OSINT] Harvested {len(unique_words)} unique target keywords.{Colors.RESET}")
             return unique_words
@@ -598,7 +651,7 @@ def generate_security_rules(target_words: List[str], numbers: List[str], output_
         "T0",
     ]
 
-    sample_nums = numbers[:15] + ['1', '123', '1234', '1903', '1905', '1907', '2024', '2025', '2026', '34', '06']
+    sample_nums = numbers[:15] + ['1', '12', '123', '1234', '2023', '2024', '2025', '2026', '01', '07', '99', '00']
     for num in set(sample_nums):
         rule_suffix = "".join(f"${c}" for c in num)
         rule_prefix = "".join(f"^{c}" for c in reversed(num))
@@ -709,7 +762,7 @@ def audit_wordlist_file(file_path: str):
             else:
                 charsets['mixed_alpha_num'] += 1
 
-            base = re.sub(r'[^a-zA-ZçÇğĞıİöÖşŞüÜ]', '', pwd).lower()
+            base = re.sub(r'[^a-zA-Z\u00C0-\u017F]', '', pwd).lower()
             if len(base) >= 3:
                 top_base_words[base] = top_base_words.get(base, 0) + 1
 
@@ -925,7 +978,7 @@ def clean_input_lines(file_path: str) -> Tuple[List[str], List[str]]:
                         raw_numbers.add(part_clean[2:] * 2)
                 else:
                     raw_words.add(part_clean)
-                    norm = normalize_turkish(part_clean)
+                    norm = normalize_text(part_clean)
                     if norm:
                         raw_words.add(norm)
 
@@ -989,7 +1042,7 @@ def generate_passwords(
         secondary_words.update(casings["secondary"])
         tertiary_words.update(casings["tertiary"])
 
-        norm = normalize_turkish(w)
+        norm = normalize_text(w)
         if norm and norm != w:
             n_casings = get_casing_variations(norm)
             primary_words.update(n_casings["primary"])
@@ -1017,7 +1070,7 @@ def generate_passwords(
 
     initials = get_initials_from_words(words)
 
-    for cp in COMMON_TURKISH_PASSWORDS:
+    for cp in COMMON_PASSWORDS:
         tier0.add(cp)
         tier0.add(cp.capitalize())
 
@@ -1108,7 +1161,7 @@ def generate_passwords(
                     tier2.add(f"{c1}-{c2}")
                     tier2.add(f"{c1}_{c2}")
 
-                    for num in list(date_perms)[:6] + ['1', '123', '34']:
+                    for num in list(date_perms)[:6] + ['1', '12', '123', '99']:
                         tier2.add(f"{c1}{num}{c2}")
                         tier2.add(f"{c1}_{num}_{c2}")
                         tier2.add(f"{combo}.{num}")
@@ -1156,9 +1209,9 @@ def generate_passwords(
                 tier3.add(f"{mw.capitalize()}{num}")
 
         for num in custom_numbers:
-            if len(num) >= 3:
-                tier3.add(f"05{num}")
-                tier3.add(f"5{num}")
+            if len(num) >= 2:
+                tier3.add(f"0{num}")
+                tier3.add(f"99{num}")
 
         for pw in list(primary_words)[:6]:
             for kw in KEYBOARD_WALKS[:8]:
@@ -1173,11 +1226,11 @@ def generate_passwords(
 
         for pw in list(primary_words)[:10]:
             for sym in ALL_SYMBOLS:
-                for num in list(date_perms)[:5] + ['1', '12', '123', '34']:
+                for num in list(date_perms)[:5] + ['1', '12', '123', '99']:
                     tier4.add(f"{pw}{sym}{num}")
                     tier4.add(f"{num}{sym}{pw}")
 
-            for num in list(date_perms)[:5] + ['1', '123', '34']:
+            for num in list(date_perms)[:5] + ['1', '12', '123', '99']:
                 tier4.add(f"{num}{pw}{num}")
 
         if len(words) >= 3:
@@ -1266,7 +1319,7 @@ def interactive_target_profiler() -> Tuple[List[str], List[str]]:
         if item:
             for part in item.split():
                 words.add(part)
-                norm = normalize_turkish(part)
+                norm = normalize_text(part)
                 if norm: words.add(norm)
 
     if custom_words:
@@ -1276,7 +1329,7 @@ def interactive_target_profiler() -> Tuple[List[str], List[str]]:
                 numbers.add(cw)
             elif cw:
                 words.add(cw)
-                norm = normalize_turkish(cw)
+                norm = normalize_text(cw)
                 if norm: words.add(norm)
 
     if plate:
@@ -1294,7 +1347,7 @@ def interactive_target_profiler() -> Tuple[List[str], List[str]]:
         if fallback:
             for part in fallback.split():
                 words.add(part)
-                norm = normalize_turkish(part)
+                norm = normalize_text(part)
                 if norm: words.add(norm)
 
     print(f"\n{Colors.GREEN}[✓] Target Profile Extracted: {len(words)} keywords, {len(numbers)} numbers/dates.{Colors.RESET}")
